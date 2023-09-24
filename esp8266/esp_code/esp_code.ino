@@ -6,9 +6,13 @@
 #include <ESP8266WebServer.h>
 #include "PubSubClient.h"
 
-#define BTN_RESET_PIN 4
-#define BLUE_LED_PIN 5
-#define MODULES_PRESENSE_PIN 14
+
+#define BTN_RESET_PIN 0
+#define BLUE_LED_PIN 14
+#define YELLOW_PRESENCE_LED 15    // I haven't setup the pin
+
+#define TRANSMIT_MODULE 4         // I haven't setup the pin
+#define RECEIVE_MODULE 5          // I haven't setup the pin
 
 //-----------------------------------------------Web-server settings-----------------------------------------------
 /* SSID и пароль точки доступа esp8266*/
