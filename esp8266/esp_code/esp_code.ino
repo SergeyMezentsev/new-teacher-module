@@ -1,4 +1,3 @@
-#include "GBUSmini.h"  // мини-библиотека с лёгкими функциями
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
 #include <EEPROM.h>
@@ -107,10 +106,8 @@ void smartSendCoordinates()
   }
 }
 
-
-
-
 //-----------------------------------------------------------------------------------------------------------------
+
 
 //-----------------------------------------------Structure to collect phone params-----------------------------------------------
 struct TParams
@@ -324,14 +321,6 @@ void setup()
   {
     //If we have already data to connect to AP of the phone
     //We need to try to connect to it
-
-    //-----------------------------------------Send number of modules--------------------------------------
-    pinMode(MODULES_PRESENSE_PIN, INPUT_PULLUP);
-    byte dataToSend[1] = {params.numberOfModules};
-    delay(2500);
-    GBUS_send(MODULES_PRESENSE_PIN, 3, 5, dataToSend, sizeof(dataToSend));
-    delay(2500);
-    pinMode(MODULES_PRESENSE_PIN, INPUT);
     
     //-----------------------------------------Connecting to local Wi-fi--------------------------------------
     Serial.println("Connecting to ");
@@ -349,7 +338,7 @@ void setup()
       delay(500);
       Serial.print(".");
 
-      if(digitalRead(BTN_RESET_PIN)== HIGH)
+      if(digitalRead(BTN_RESET_PIN)== LOW)
       {
         clearEEPROM();
         restartESP();
@@ -406,7 +395,9 @@ void loop()
       //Send coordinates to 
       smartSendCoordinates();
       
-      //Check for presence_signal
+	  
+	  /*
+      //Check for presence_signal								Here we need to insert function that is respponsible for modules' survey
       if(digitalRead(MODULES_PRESENSE_PIN) == HIGH)
       {
         Serial.println("true");
@@ -417,13 +408,14 @@ void loop()
         Serial.println("false");
         client.publish("modules", "false");
       }
+	  */
       
       lastSend = millis();
     }
 
 
     //Check if we need to restart ESP
-    if(digitalRead(BTN_RESET_PIN)== HIGH)
+    if(digitalRead(BTN_RESET_PIN)== LOW)
     {
       clearEEPROM();
       restartESP();
