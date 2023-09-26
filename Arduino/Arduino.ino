@@ -1,8 +1,8 @@
 #include "GBUSmini.h"
 
 // define pins
-#define TX_PIN 10                     // pin connected to tranciever module
-#define RX_PIN  5                     // pin connected to receiver module
+#define TX_PIN 10                     // pin connected to transmitter module
+#define RX_PIN  5                     // pin connected to reciever module
 //#define LED_PRESENCE_PIN A0           //This led allows to know if all modules are present      //Uncomment if u need dynamic indication of modules presence
 #define GET_NUMBER_OF_MODULES_PIN 4   //This pin allows to get number of modules
 #define PRESENCE_STATE_PIN  7         //This allows to show presence to the esp8266
@@ -13,7 +13,7 @@ byte numberOfModules = 0;             //Maximum number of modules that will be c
 #define RF_ERR 500              //The shortest duration of the pulse
 #define NUM_OF_START_PULSES 3   //Number of the shortest durations (RF_ERR) in every pulse in the teacher's message
 #define RF_START_TEACHER  5     // Number of start pulses in the teacher's message
-#define RF_START_CHILD  3       //Number of start pulses in preambule of every children's message
+#define RF_START_CHILD  3       //Number of start pulses in preambule of every child's message
 
 //-----------------------------------------------------------------------------------------------------
 //function for teacher's message
@@ -22,10 +22,10 @@ void teacherMSGSend(void)
   for( uint8_t i = RF_START_TEACHER; i; i--)
   {
   digitalWrite(TX_PIN, HIGH);
-  digitalWrite(LED_BUILTIN, HIGH);
+  //digitalWrite(LED_BUILTIN, HIGH);
   delayMicroseconds(NUM_OF_START_PULSES*RF_ERR);
   digitalWrite(TX_PIN, LOW);
-  digitalWrite(LED_BUILTIN, LOW);
+  //digitalWrite(LED_BUILTIN, LOW);
   delayMicroseconds(NUM_OF_START_PULSES*RF_ERR);
   }
 }
@@ -124,9 +124,9 @@ void setup() {
 
   pinMode(GET_NUMBER_OF_MODULES_PIN, INPUT_PULLUP);   //This is required for "GBUS" library
 
-  while( !(GBUS_read(GET_NUMBER_OF_MODULES_PIN, 3, &numberOfModules, sizeof(numberOfModules))) )  ;
+  //while( !(GBUS_read(GET_NUMBER_OF_MODULES_PIN, 3, &numberOfModules, sizeof(numberOfModules))) )  ;
   
-  Serial.print("got: "); Serial.println(numberOfModules);
+  //Serial.print("got: "); Serial.println(numberOfModules);
 
 }
 

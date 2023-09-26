@@ -34,7 +34,7 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 //set time period that is used to send data to the MQTT broker
-int sendPeriod = 2000;
+int sendPeriod = 4000;
 unsigned long lastSend = 0;
 
 //This function allows us to wait until we're connected
@@ -143,7 +143,7 @@ void restartESP()
 //-----------------------------------------------------------------------------------------------------------------
 
 
-
+// start HTML code for server-mode
 String startPageHTML = R"=====(
 <!DOCTYPE html>
 <html>
@@ -296,6 +296,147 @@ void handle_NotFound()
 
 //---------------------------------------------------------------------------------------------------------------------------------------
 
+//-----------------------------------------------Functions for children' modules survey----------------------------------------------------------
+
+//settings for the radioprotocol
+#define RF_ERR 500              //The shortest duration of the pulse
+#define NUM_OF_START_PULSES 3   //Number of the shortest durations (RF_ERR) in every pulse in the teacher's message
+#define RF_START_TEACHER  5     // Number of start pulses in the teacher's message
+#define RF_START_CHILD  3       //Number of start pulses in preambule of every child's message
+
+
+//function for teacher's start-message
+void teacherMSGSend(void)
+{
+  for( uint8_t i = RF_START_TEACHER; i; i--)
+  {
+  digitalWrite(TRANSMIT_MODULE, HIGH);
+  delayMicroseconds(NUM_OF_START_PULSES*RF_ERR);
+  digitalWrite(TRANSMIT_MODULE, LOW);
+  delayMicroseconds(NUM_OF_START_PULSES*RF_ERR);
+  }
+}
+
+// Getting ADDR from the child's module
+uint8_t getAddr(void)
+{
+  unsigned long duration = 0;
+  uint8_t counter = RF_START_CHILD;
+  uint8_t flag = 1;
+  do {
+    duration = pulseIn(RECEIVE_MODULE, HIGH, 14 * RF_ERR);
+    if ((duration < (2 * RF_ERR)) || (duration > (4 * RF_ERR))) {flag = 0; break;}
+  } while(--counter);
+
+  uint8_t data = 1;
+  if (flag){
+    delayMicroseconds(3 * RF_ERR - 200);
+    // read ADDR
+    for(uint8_t i=8; i; i--) {
+      duration = pulseIn(RECEIVE_MODULE, HIGH, 14 * RF_ERR);
+      data <<= 1;
+      if (duration > (2*RF_ERR - 200)) data |= 1;
+    }
+  }
+
+  if (flag)
+    return data;
+  else
+    return 0;
+}
+
+//Checking presence of all modules
+uint8_t arrPresence[32] = {0};    //If the counter here is more than 5, the module hasn't been available more than for 5 cycles
+bool absentModules[32] = {0};     // If the counter is more than 5, so here we will set the flag that shows us absence of the module
+
+// This function increments all cells of the array arrPresence[]
+void incArr()
+{
+  for (uint8_t i = 0; i < params.numberOfModules; i++)
+    if(arrPresence[i] <= 5) arrPresence[i]++;
+}
+
+
+bool allModulesPresent()
+{
+  bool presenceFlag = 1;
+  for (uint8_t i = 0; i < params.numberOfModules; i++)
+    if (arrPresence[i] >= 5)
+    {
+      presenceFlag = 0;
+      absentModules[i] = true;
+    }
+
+  if(presenceFlag)
+    return true;
+  else
+    return false;
+}
+
+// This func needed only for the debugging
+void printAbsentModules()
+{
+  Serial.println("---ALERT!---");
+  Serial.println("Absent Modules:");
+  for (uint8_t i = 0; i < params.numberOfModules; i++)
+    if(absentModules[i] == true)
+    {
+      Serial.print("Module:\t"); Serial.println(i+1); Serial.print("\n");
+    }
+}
+
+
+// Returns true if no modules are lost
+bool checkModules() {
+	
+	//Time period checks:
+	unsigned long timeLeft = 1600;		// During this time the theacher's module is getting signals from from childrens' modules
+	unsigned long currentTime = 0;		// This variable contains current time during execution of function that gets numbers from childrens' modules
+	
+  teacherMSGSend();
+  delay(20);
+
+  //increment all cells for modules in the array
+  incArr();
+
+  //start to listen to childrens' modules
+  currentTime = millis();
+  while(timeLeft > 0)
+  {
+
+    //Get addresses
+    uint8_t addr = 0;
+    if( (addr = getAddr()) != 0){
+      Serial.print("Address: "); Serial.println(addr, HEX);
+      arrPresence[addr-1] = 0;
+      absentModules[addr-1] = false;
+    }
+    
+
+    //Check if the period of listening to module is out of time
+    if(millis() - currentTime >= 70)
+    {
+      timeLeft -= (millis() - currentTime);
+      currentTime = millis();
+    }
+  }
+  
+  //Check for presence of all modules
+  if(!allModulesPresent())
+  {
+    digitalWrite(YELLOW_PRESENCE_LED, HIGH);   //Allows to send the absence signal to esp8266
+    
+    printAbsentModules();	// Just for debugging
+	return false;
+  }
+  else {
+	digitalWrite(YELLOW_PRESENCE_LED, LOW);
+	return true;
+  }
+
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------------
 
 void setup() 
 {
@@ -383,22 +524,23 @@ void loop()
   {
     //If we have already data to connect to AP of the phone
     //We need to try to connect to it
-
     if (!client.connected())
     {
       reconnect();
     }
     client.loop();
+	
 
     if(millis() - lastSend > sendPeriod)
     {
       //Send coordinates to 
-      smartSendCoordinates();
-      
-	  
-	  /*
-      //Check for presence_signal								Here we need to insert function that is respponsible for modules' survey
-      if(digitalRead(MODULES_PRESENSE_PIN) == HIGH)
+      smartSendCoordinates();  
+      lastSend = millis();
+    }
+	
+	
+	//Check for presence of the modules								Here we need to insert function that is respponsible for modules' survey
+      if(checkModules())
       {
         Serial.println("true");
         client.publish("modules", "true");
@@ -408,13 +550,11 @@ void loop()
         Serial.println("false");
         client.publish("modules", "false");
       }
-	  */
-      
-      lastSend = millis();
-    }
 
 
-    //Check if we need to restart ESP
+
+    // Check if we need to restart ESP
+	  // It seems to hold this BTN sufficiently longer than usually
     if(digitalRead(BTN_RESET_PIN)== LOW)
     {
       clearEEPROM();
