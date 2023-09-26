@@ -303,12 +303,19 @@ void handle_NotFound()
 void setup() 
 {
   Serial.begin(115200);
-  EEPROM.begin(100);      //Start EEPROM
+  EEPROM.begin(100);      //Start EEPROM, 100 --> used mem in bytes
 
-  pinMode(BTN_RESET_PIN, INPUT);
+  pinMode(BTN_RESET_PIN, INPUT_PULLUP);
+  
   pinMode(BLUE_LED_PIN, OUTPUT);
   digitalWrite(BLUE_LED_PIN, LOW);
-  pinMode(MODULES_PRESENSE_PIN, INPUT);
+  
+  pinMode(YELLOW_PRESENCE_LED, OUTPUT);
+  digitalWrite(YELLOW_PRESENCE_LED, LOW);
+  
+  pinMode(TRANSMIT_MODULE, OUTPUT);
+  pinMode(RECEIVE_MODULE, INPUT);
+  
   delay(100);
 
   EEPROM.get(0, params);  
